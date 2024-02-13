@@ -5,85 +5,59 @@ const app = express();
 const morgan = require('morgan');
 const amqp = require('amqplib');
 const url = 'amqp://localhost';
-const queueName = 'hello';
-const exchangeName = 'post_events';
+
+const QUEUENAME = 'post_event';
+// const EXCHANGE_NAME = 'all_events_exchange';
+const EXCHANGE_NAME = 'post_exchange';
 
 app.use(morgan('combined'));
 
-// Event Quese
-async function sendMessage() {
-    const connection = await amqp.connect(url);
+
+async function consumeEvents() {
+    const connection = await amqp.connect('amqp://localhost');
     const channel = await connection.createChannel();
+    await channel.assertExchange(EXCHANGE_NAME, 'fanout', { durable: false });
+  // Make the queue durable and give it a name to persist messages
+  const { queue } = await channel.assertQueue('consumer_queue', { durable: true });
+    await channel.bindQueue(queue, EXCHANGE_NAME, '');
 
-    await channel.assertQueue(queueName, { durable: false });
-    await channel.sendToQueue(queueName, Buffer.from('User Service...'));
+    console.log('Waiting for events...');
 
-    console.log('Message sent to queue');
-    setTimeout(() => connection.close(), 500);
+    // Set up a prefetch count to limit the number of unacknowledged messages
+    channel.prefetch(1);
+
+    channel.consume(queue, (msg) => {
+        const event = JSON.parse(msg.content.toString());
+        console.log('Received event:', event);
+        // Process the event (e.g., update UI, trigger action)
+        channel.ack(msg);
+    });
 }
 
-async function receiveMessage() {
-    const connection = await amqp.connect(url);
-    const channel = await connection.createChannel();
+consumeEvents();
 
-    await channel.assertQueue(queueName, { durable: false });
-    console.log('Waiting for messages...');
+// app.get('/user', async (req, res) => {
+//     try {
+//         // Process the request to create a post
+//         // For example, save the post to a database
+//         const post = req.body; // Assuming post data is sent in the request body
 
-    channel.consume(queueName, (msg) => {
-        console.log('Received message:', msg.content.toString());
-    }, { noAck: true });
-}
+//         // After creating the post, send a message to the RabbitMQ queue
+//         const connection = await amqp.connect(url);
+//         const channel = await connection.createChannel();
 
-// Send message
-sendMessage();
+//         await channel.assertQueue(queueName, { durable: false });
+//         await channel.sendToQueue(queueName, Buffer.from(JSON.stringify('yes')));
 
-// Receive message
-receiveMessage();
+//         console.log('Message sent to queue');
+//         res.status(201).json({ message: 'Post created successfully' });
 
-async function consumeMessage() {
-    try {
-        const connection = await amqp.connect(url);
-        const channel = await connection.createChannel();
-
-        await channel.assertExchange(exchangeName, 'fanout', { durable: false });
-        const { queue } = await channel.assertQueue('', { exclusive: true });
-        await channel.bindQueue(queue, exchangeName, '');
-
-        console.log('Waiting for post events...');
-
-        channel.consume(queue, (msg) => {
-            console.log('Received post event in User Service:', msg.content.toString());
-            // Process the received event here (e.g., update user data)
-        }, { noAck: true });
-    } catch (error) {
-        console.error('Error consuming post events in User Service:', error);
-    }
-}
-
-consumeMessage();
-
-app.get('/user', async (req, res) => {
-    try {
-        // Process the request to create a post
-        // For example, save the post to a database
-        const post = req.body; // Assuming post data is sent in the request body
-
-        // After creating the post, send a message to the RabbitMQ queue
-        const connection = await amqp.connect(url);
-        const channel = await connection.createChannel();
-
-        await channel.assertQueue(queueName, { durable: false });
-        await channel.sendToQueue(queueName, Buffer.from(JSON.stringify('yes')));
-
-        console.log('Message sent to queue');
-        res.status(201).json({ message: 'Post created successfully' });
-
-        setTimeout(() => connection.close(), 500);
-    } catch (error) {
-        console.error('Error creating post:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+//         setTimeout(() => connection.close(), 500);
+//     } catch (error) {
+//         console.error('Error creating post:', error);
+//         res.status(500).json({ error: 'Internal server error' });
+//     }
+// });
 
 app.listen(PORT, (err) => {
     if (err) console.log(err);

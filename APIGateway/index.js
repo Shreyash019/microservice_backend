@@ -3,64 +3,60 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const morgan = require('morgan');
 const amqp = require('amqplib');
 const url = 'amqp://localhost';
-const queueName = 'hello';
-const exchangeName = 'post_events';
+
+const QUEUENAME = 'post_event';
+const EXCHANGE_NAME = 'post_exchange';
 
 const app = express();
 app.use(morgan('combined'));
 
 
-// Event Quese
-async function sendMessage() {
-    const connection = await amqp.connect(url);
-    const channel = await connection.createChannel();
+// // Event Queue
+// async function sendMessage() {
+//     const connection = await amqp.connect(url);
+//     const channel = await connection.createChannel();
 
-    await channel.assertQueue(queueName, { durable: false });
-    await channel.sendToQueue(queueName, Buffer.from('API Gateway...'));
+//     await channel.assertQueue(queueName, { durable: false });
+//     await channel.sendToQueue(queueName, Buffer.from('API Gateway...'));
 
-    console.log('Message sent to queue');
-    setTimeout(() => connection.close(), 500);
-}
+//     console.log('Message sent to queue');
+//     setTimeout(() => connection.close(), 500);
+// }
 
-async function receiveMessage() {
-    const connection = await amqp.connect(url);
-    const channel = await connection.createChannel();
+// async function receiveMessage() {
+//     const connection = await amqp.connect(url);
+//     const channel = await connection.createChannel();
 
-    await channel.assertQueue(queueName, { durable: false });
-    console.log('Waiting for messages...');
+//     await channel.assertQueue(queueName, { durable: false });
+//     console.log('Waiting for messages...');
 
-    channel.consume(queueName, (msg) => {
-        console.log('Received message:', msg.content.toString());
-    }, { noAck: true });
-}
-
+//     channel.consume(queueName, (msg) => {
+//         console.log('Received message:', msg.content.toString());
+//     }, { noAck: true });
+// }
 // Send message
-sendMessage();
-
+// sendMessage();
 // Receive message
-receiveMessage();
+// receiveMessage();
 
-async function consumeMessage() {
-    try {
-        const connection = await amqp.connect(url);
-        const channel = await connection.createChannel();
-
-        await channel.assertExchange(exchangeName, 'fanout', { durable: false });
-        const { queue } = await channel.assertQueue('', { exclusive: true });
-        await channel.bindQueue(queue, exchangeName, '');
-
-        console.log('Waiting for post events...');
-
-        channel.consume(queue, (msg) => {
-            console.log('Received post event in User Service:', msg.content.toString());
-            // Process the received event here (e.g., update user data)
-        }, { noAck: true });
-    } catch (error) {
-        console.error('Error consuming post events in User Service:', error);
-    }
-}
-
-consumeMessage();
+async function consumeEvents() {
+    const connection = await amqp.connect('amqp://localhost');
+    const channel = await connection.createChannel();
+    await channel.assertExchange(EXCHANGE_NAME, 'fanout', { durable: false });
+    const { queue } = await channel.assertQueue('', { exclusive: true });
+    await channel.bindQueue(queue, EXCHANGE_NAME, '');
+  
+    console.log('Waiting for events...');
+  
+    channel.consume(queue, (msg) => {
+      const event = JSON.parse(msg.content.toString());
+      console.log('Received event:', event);
+      // Process the event (e.g., update UI, trigger action)
+      channel.ack(msg);
+    });
+  }
+  
+  consumeEvents();
 
 // Proxy middleware configuration for each microservice
 const userProxy = createProxyMiddleware({
