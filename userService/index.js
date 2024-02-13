@@ -14,7 +14,7 @@ app.use(morgan('combined'));
 
 
 async function consumeEvents() {
-    const connection = await amqp.connect('amqp://localhost');
+    const connection = await amqp.connect(url);
     const channel = await connection.createChannel();
     await channel.assertExchange(EXCHANGE_NAME, 'fanout', { durable: false });
   // Make the queue durable and give it a name to persist messages
@@ -24,7 +24,7 @@ async function consumeEvents() {
     console.log('Waiting for events...');
 
     // Set up a prefetch count to limit the number of unacknowledged messages
-    channel.prefetch(1);
+    // channel.prefetch(1);
 
     channel.consume(queue, (msg) => {
         const event = JSON.parse(msg.content.toString());
