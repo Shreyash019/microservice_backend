@@ -1,0 +1,20 @@
+{
+  "name": "user_service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev:server": "nodemon --verbose dist/index.js",
+    "dev:watch": "tsc --watch & concurrently \"npm run build\"",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/express": "^4.17.21",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {},
+  "description": ""
+}

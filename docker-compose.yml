@@ -3,6 +3,15 @@ version: '3.8'
 
 services:
 
+  user_service:
+    build:
+      context: ./todo_user_service
+    container_name: todo_user_service
+    ports:
+      - "5001:5001"
+    networks:
+      - app-network
+
   nginx:
     build:
       context: ./gateway
