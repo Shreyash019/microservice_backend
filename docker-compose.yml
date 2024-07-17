@@ -12,6 +12,15 @@ services:
     networks:
       - app-network
 
+  task_service:
+    build:
+      context: ./task_service
+    container_name: task_service
+    ports:
+      - "5003:5003"
+    networks:
+      - app-network
+
   nginx:
     build:
       context: ./gateway
