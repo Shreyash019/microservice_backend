@@ -55,13 +55,13 @@ export default class Auth {
             id: string;
             iat: number
         };
-        const decoded = await jwt.verify(token, process.env.JWT_SECRET!) as DecodedJwt;;
+        const decoded = await jwt.verify(token, process.env.JWT_SECRET!) as DecodedJwt;
 
         const currentTime = Math.floor(Date.now() / 1000);
         const issuedAt = decoded.iat;
         const TIME_FOR_REFRESH = 300 // In Seconds
         const timeDifference = currentTime - issuedAt;
-        
+
         if (timeDifference > TIME_FOR_REFRESH) {
             await auth.headerAuthToken(res, decoded.id);
         }
@@ -74,5 +74,39 @@ export default class Auth {
         }
         next()
     }
+
+    async generateRefreshToken(tokenToRefresh: string): Promise<{ success: boolean, token:any, options:any }> {
+
+        // Returning if no token
+        if (!tokenToRefresh) {
+            return {
+                success: false,
+                token: null,
+                options: null
+            };
+        }
+        const auth = new Auth();
+        // Decoding user using token
+        type DecodedJwt = {
+            exp: number; // Assuming expiration is stored in 'exp' claim
+            id: string;
+            iat: number
+        };
+        const decoded = await jwt.verify(tokenToRefresh, process.env.JWT_SECRET!) as DecodedJwt;
+        // Token Generation
+        const token = await auth.generateToken(decoded.id);
+
+        // Cookie validation days setup
+        const options = {
+            expires: new Date(
+                Date.now() + parseInt(process.env.JWT_COOKIE_EXPIRES_IN!) * 24 * 60 * 1000
+            ),
+            httpOnly: true,
+        };
+
+        // Return values
+        return { success: true, token, options };
+    }
+
 
 }

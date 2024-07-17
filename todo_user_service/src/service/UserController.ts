@@ -13,7 +13,7 @@ export default class UserAccountController {
         try {
             // Checking request body
             const { username, password, email, name } = req.body;
-            if (!username || !password || !email || name) {
+            if (!username || !password || !email || !name) {
                 return res.status(400).json({ message: "Please provide all the required fields" });
             }
 
